@@ -1,5 +1,5 @@
 /* LaPiramideMatematica SW — cache first, MIT © 2025 PezzaliAPP */
-const CACHE = 'piramide-v2';
+const CACHE = 'piramide-v3'; // bump per evitare cache vecchie
 const ASSETS = [
   './',
   './index.html',
