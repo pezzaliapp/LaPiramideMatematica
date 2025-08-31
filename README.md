@@ -1,6 +1,6 @@
 # LaPiramideMatematica — Regola Unica 1..15 (PWA)
 
-> **Semplice non vuol dire facile.** (Bill Bernbach avrebbe approvato.)
+> **Semplice non vuol dire facile.**
 
 Questa PWA mette alla prova un’idea limpida: **usa tutti i numeri da 1 a 15 una sola volta** per riempire una **piramide ruotata** (base in alto, punta in basso). Ogni numero sotto nasce da `|a − b|` dei due sopra. **Niente zeri. Nessun numero ripetuto.**
 
