@@ -26,7 +26,8 @@ Se sbagli, la piramide te lo dice: senza moralismi, con la logica.
 1. Inserisci i **5 numeri** della **base** (in alto).  
 2. La piramide si calcola verso il basso con le differenze assolute.  
 3. **Controlla Unicità** → scopri subito se c’è un doppione, uno zero o un fuori scala.  
-4. **Condividi** → un link ricrea la stessa base sul device di chi lo apre.
+4. **Genera base valida** → vuoi un punto di partenza già corretto? Te lo trova lei.  
+5. **Condividi** → un link ricrea la stessa base sul device di chi lo apre.
 
 ---
 
