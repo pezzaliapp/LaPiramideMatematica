@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>La Piramide Matematica — Unicità 1..15</title>
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="icon-192.png" />
+  <style>
+    :root{--bg:#0f172a;--card:#111827;--ink:#e5e7eb;--muted:#9ca3af;--accent:#22c55e;--danger:#ef4444;--warn:#f59e0b;--line:#1f2937}
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{background:linear-gradient(180deg,#0b1220,#0f172a);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;display:flex;flex-direction:column;align-items:center}
+    header{width:100%;max-width:960px;padding:16px 20px}
+    h1{margin:0;font-size:clamp(20px,3vw,28px)}
+    .sub{color:var(--muted);font-size:.95rem;margin-top:4px}
+    main{width:100%;max-width:960px;padding:8px 20px 28px}
+    .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0 18px}
+    .group{display:flex;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);padding:8px 10px;border-radius:12px}
+    button{background:var(--card);color:var(--ink);border:1px solid var(--line);padding:8px 12px;border-radius:10px;cursor:pointer}
+    button.primary{border-color:#14532d;background:#0e1b14}
+    button.accent{border-color:#14532d;background:#102716;color:#d1fae5}
+    button.warn{border-color:#4b3a0b;background:#261d06;color:#fde68a}
+    .grid{display:flex;flex-direction:column;gap:10px;align-items:center;padding:14px;background:var(--card);border:1px solid var(--line);border-radius:16px}
+    .row{display:grid;gap:10px}
+    .cell{min-width:68px;height:56px;display:flex;align-items:center;justify-content:center;background:#0b1220;border:1px solid var(--line);border-radius:10px;font-size:20px}
+    .cell.readonly{opacity:.9}
+    .cell input{background:transparent;border:none;outline:none;color:var(--ink);text-align:center;width:100%;height:100%;font-size:20px}
+    .msg{margin-top:12px;color:var(--muted)}
+    .ok{outline:2px solid var(--accent)}
+    .no{outline:2px solid var(--danger)}
+    .warncell{outline:2px solid var(--warn)}
+    .footer{margin-top:18px;font-size:.9rem;color:var(--muted)}
+    .palette{display:flex;flex-wrap:wrap;gap:6px;max-width:420px}
+    .chip{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--line);background:#0b1220}
+    .chip.used{opacity:.35;filter:grayscale(1)}
+    @media (max-width:560px){.cell{min-width:54px;height:48px;font-size:18px}.chip{width:38px;height:38px}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>La Piramide Matematica</h1>
+    <div class="sub">**Regola del gioco**: usa **tutti i numeri 1..15 una sola volta**. La piramide è ruotata: <strong>base in alto</strong> (da sinistra a destra), <strong>punta in basso</strong>. Ogni numero sotto è <code>|a−b|</code>. Nessuno zero è ammesso.</div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <div class="group">
+        <button id="btnNew" class="primary">Nuovo (vuoto)</button>
+        <button id="btnGen" class="accent">Genera base valida</button>
+        <button id="btnCheck" class="warn">Controlla Unicità</button>
+        <button id="btnShare">Condividi</button>
+      </div>
+    </div>
+
+    <div class="palette" id="palette"></div>
+    <div id="grid" class="grid" aria-live="polite"></div>
+    <div id="msg" class="msg"></div>
+    <div class="footer">PWA offline • 15 numeri unici (1..15) • differenza assoluta • base in alto</div>
+  </main>
+
+  <script>
+    /* MIT © 2025 PezzaliAPP — LaPiramideMatematica (unicità 1..15) */
+    const els = {
+      grid: document.getElementById('grid'),
+      msg: document.getElementById('msg'),
+      palette: document.getElementById('palette'),
+      btnNew: document.getElementById('btnNew'),
+      btnGen: document.getElementById('btnGen'),
+      btnCheck: document.getElementById('btnCheck'),
+      btnShare: document.getElementById('btnShare'),
+    };
+
+    const L = 5; // 5 livelli = 15 celle
+    const allowed = Array.from({length:15}, (_,i)=>i+1);
+
+    const state = {
+      base: Array(L).fill(null), // riga 0
+      full: Array.from({length:L}, (_,r)=> Array(L-r).fill(null)), // top->bottom
+    };
+
+    function compute(){
+      // Recompute full rows from base; if missing values, propagate null
+      state.full[0] = state.base.slice();
+      for(let r=1; r<L; r++){
+        for(let c=0; c<state.full[r].length; c++){
+          const a = state.full[r-1][c];
+          const b = state.full[r-1][c+1];
+          if(a==null || b==null){ state.full[r][c]=null; }
+          else{
+            state.full[r][c] = Math.abs(a - b);
+          }
+        }
+      }
+    }
+
+    function render(){
+      els.grid.innerHTML = '';
+      els.msg.textContent = '';
+      renderPalette();
+
+      // responsive width
+      const baseWidth = Math.max(56, Math.min(88, Math.floor(680/L)));
+
+      for(let r=0; r<L; r++){
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.style.gridTemplateColumns = `repeat(${L-r}, ${baseWidth}px)`;
+        els.grid.appendChild(row);
+
+        for(let c=0; c<L-r; c++){
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          row.appendChild(cell);
+
+          if(r===0){
+            // input per la base, selezione da palette 1..15
+            const inp = document.createElement('input');
+            inp.setAttribute('inputmode','numeric');
+            inp.setAttribute('pattern','[0-9]*');
+            inp.placeholder = '';
+            inp.value = state.base[c] ?? '';
+            inp.addEventListener('input', ()=>{
+              let v = parseInt(inp.value,10);
+              if(!Number.isFinite(v)){ v = null; }
+              // vincoli: 1..15 e no duplicati nella base
+              if(v!=null){
+                if(v<1 || v>15){ v=null; }
+                else{
+                  // se duplicato, annulla
+                  for(let i=0;i<L;i++){
+                    if(i!==c && state.base[i]===v){ v = null; break; }
+                  }
+                }
+              }
+              state.base[c] = v;
+              inp.value = v ?? '';
+              compute();
+              updateComputedCells();
+              renderPalette();
+            });
+            cell.appendChild(inp);
+          } else {
+            cell.classList.add('readonly');
+            const val = state.full[r][c];
+            if(val==null){ cell.textContent=''; }
+            else { cell.textContent = val; }
+          }
+        }
+      }
+      validateAll(); // evidenzia eventuali errori
+    }
+
+    function updateComputedCells(){
+      const rows = els.grid.querySelectorAll('.row');
+      for(let r=1; r<L; r++){
+        const cells = rows[r].children;
+        for(let c=0; c<cells.length; c++){
+          const v = state.full[r][c];
+          cells[c].textContent = (v==null? '' : v);
+          cells[c].classList.remove('no','ok','warncell');
+        }
+      }
+      validateAll();
+    }
+
+    function renderPalette(){
+      // palette dei numeri 1..15: segnare come "used" se già usati in tutta la piramide
+      const used = new Set();
+      for(let r=0;r<L;r++){
+        for(let c=0;c<state.full[r].length;c++){
+          const v = state.full[r][c];
+          if(Number.isFinite(v)) used.add(v);
+        }
+      }
+      els.palette.innerHTML = '';
+      allowed.forEach(n=>{
+        const chip = document.createElement('div');
+        chip.className = 'chip' + (used.has(n) ? ' used' : '');
+        chip.textContent = n;
+        // click rapido: inserisce in prima casella vuota della base
+        chip.addEventListener('click', ()=>{
+          // cerca prima posizione vuota nella base
+          const idx = state.base.findIndex(v=>v==null);
+          if(idx>=0 && !state.base.includes(n)){
+            state.base[idx]=n;
+            compute();
+            render();
+          }
+        });
+        els.palette.appendChild(chip);
+      });
+    }
+
+    function validateAll(){
+      // Regole:
+      // 1) Tutti i valori presenti devono essere 1..15 (no zeri)
+      // 2) Nessun numero può ripetersi nell'intera piramide (quando completo)
+      // 3) Se non completa, evidenziare conflitti parziali (duplicati già prodotti)
+      const rows = els.grid.querySelectorAll('.row');
+      const seen = new Map(); // val -> list of {r,c}
+      let okRange = true, noZero = true;
+      for(let r=0;r<L;r++){
+        for(let c=0;c<state.full[r].length;c++){
+          const v = state.full[r][c];
+          if(v==null) continue;
+          if(v===0) noZero=false;
+          if(v<1 || v>15) okRange=false;
+          if(!seen.has(v)) seen.set(v, []);
+          seen.get(v).push({r,c});
+        }
+      }
+
+      // mark duplicates
+      seen.forEach((arr, val)=>{
+        if(arr.length>1){
+          arr.forEach(({r,c})=>{
+            rows[r].children[c].classList.add('no');
+          });
+        }
+      });
+
+      // mark zeros or out-of-range
+      for(let r=0;r<L;r++){
+        for(let c=0;c<state.full[r].length;c++){
+          const v = state.full[r][c];
+          if(v==null) continue;
+          if(v===0 || v<1 || v>15){
+            rows[r].children[c].classList.add('warncell');
+          }
+        }
+      }
+
+      // message
+      const totalFilled = [...seen.values()].reduce((acc,a)=>acc+a.length,0);
+      const uniqueCount = seen.size;
+      if(totalFilled<15){
+        els.msg.textContent = `Numeri usati: ${uniqueCount}/15. Completa la base: valori ammessi 1..15, niente zeri, nessun duplicato.`;
+      } else {
+        const dup = [...seen.values()].some(a=>a.length>1);
+        if(!dup && okRange && noZero){
+          els.msg.textContent = 'Perfetto: 15 numeri unici tra 1 e 15, nessun zero. ✅';
+        } else {
+          let parts=[];
+          if(dup) parts.push('ci sono duplicati');
+          if(!noZero) parts.push('trovati zeri');
+          if(!okRange) parts.push('valori fuori 1..15');
+          els.msg.textContent = 'Controllo: ' + parts.join(' • ');
+        }
+      }
+    }
+
+    function findValidBase(maxTries=20000){
+      // Prova basi casuali (5 numeri distinti da 1..15) finché
+      // l'intera piramide ha 15 numeri unici dentro 1..15 e senza zeri.
+      const nums = allowed.slice();
+      for(let t=0;t<maxTries;t++){
+        // scegli 5 numeri distinti
+        for(let i=nums.length-1;i>0;i--){ // shuffle
+          const j = Math.floor(Math.random()*(i+1));
+          [nums[i], nums[j]] = [nums[j], nums[i]];
+        }
+        const base = nums.slice(0,5);
+        // compute
+        const rows = Array.from({length:L}, (_,r)=> Array(L-r).fill(null));
+        rows[0] = base.slice();
+        let ok = true;
+        const seen = new Set(base);
+        for(let r=1;r<L && ok;r++){
+          for(let c=0;c<rows[r].length;c++){
+            const v = Math.abs(rows[r-1][c] - rows[r-1][c+1]);
+            if(v<1 || v>15) { ok=false; break; }
+            if(seen.has(v)) { ok=false; break; }
+            rows[r][c]=v; seen.add(v);
+          }
+        }
+        if(ok && seen.size===15){
+          return base;
+        }
+      }
+      return null;
+    }
+
+    function resetEmpty(){
+      state.base = Array(L).fill(null);
+      state.full = Array.from({length:L}, (_,r)=> Array(L-r).fill(null));
+      render();
+    }
+
+    function shareLink(){
+      // Condividi la base corrente
+      if(state.base.some(v=>v==null)){ els.msg.textContent = 'Inserisci tutti e 5 i numeri di base prima di condividere.'; return; }
+      const base = state.base.join(',');
+      const url = new URL(location.href);
+      url.hash = `b=${encodeURIComponent(base)}`;
+      const text = 'La Piramide Matematica — unicità 1..15';
+      if(navigator.share){
+        navigator.share({title:'La Piramide Matematica', text, url: url.toString()}).catch(()=>{});
+      } else {
+        navigator.clipboard.writeText(url.toString()).then(()=>{
+          els.msg.textContent = 'Link copiato negli appunti.';
+        });
+      }
+    }
+
+    function tryLoad(){
+      const h = location.hash.replace('#','');
+      if(!h) return false;
+      const p = new URLSearchParams(h);
+      const b = p.get('b');
+      if(!b) return false;
+      const base = b.split(',').map(x=>parseInt(x,10)).filter(x=>Number.isFinite(x));
+      if(base.length!==5){ return false; }
+      // validate uniqueness in base only (rest verrà convalidato dopo)
+      if(new Set(base).size!==5) return false;
+      if(base.some(v=>v<1 || v>15)) return false;
+      state.base = base;
+      compute();
+      render();
+      return true;
+    }
+
+    // events
+    els.btnNew.addEventListener('click', resetEmpty);
+    els.btnGen.addEventListener('click', ()=>{
+      els.msg.textContent = 'Sto cercando una base valida (potrebbe richiedere qualche secondo)...';
+      setTimeout(()=>{
+        const base = findValidBase(30000);
+        if(base){
+          state.base = base;
+          compute();
+          render();
+          els.msg.textContent = 'Base valida trovata. Prova ad alterarla o riscriverla mantenendo le regole.';
+        } else {
+          els.msg.textContent = 'Nessuna base trovata entro i tentativi. Riprova.';
+        }
+      }, 30);
+    });
+    els.btnCheck.addEventListener('click', validateAll);
+    els.btnShare.addEventListener('click', shareLink);
+
+    // init
+    if(!tryLoad()){
+      resetEmpty();
+    }
+
+    // PWA SW
+    if('serviceWorker' in navigator){
+      window.addEventListener('load', ()=> {
+        navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      });
+    }
+  </script>
+</body>
+</html>
