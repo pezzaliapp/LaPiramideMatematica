@@ -48,7 +48,6 @@
     <div class="toolbar">
       <div class="group">
         <button id="btnNew" class="primary">Nuovo (vuoto)</button>
-        <button id="btnGen" class="accent">Genera base valida</button>
         <button id="btnCheck" class="warn">Controlla Unicità</button>
         <button id="btnShare">Condividi</button>
       </div>
@@ -67,7 +66,6 @@
       msg: document.getElementById('msg'),
       palette: document.getElementById('palette'),
       btnNew: document.getElementById('btnNew'),
-      btnGen: document.getElementById('btnGen'),
       btnCheck: document.getElementById('btnCheck'),
       btnShare: document.getElementById('btnShare'),
     };
@@ -252,38 +250,7 @@
       }
     }
 
-    function findValidBase(maxTries=20000){
-      // Prova basi casuali (5 numeri distinti da 1..15) finché
-      // l'intera piramide ha 15 numeri unici dentro 1..15 e senza zeri.
-      const nums = allowed.slice();
-      for(let t=0;t<maxTries;t++){
-        // scegli 5 numeri distinti
-        for(let i=nums.length-1;i>0;i--){ // shuffle
-          const j = Math.floor(Math.random()*(i+1));
-          [nums[i], nums[j]] = [nums[j], nums[i]];
-        }
-        const base = nums.slice(0,5);
-        // compute
-        const rows = Array.from({length:L}, (_,r)=> Array(L-r).fill(null));
-        rows[0] = base.slice();
-        let ok = true;
-        const seen = new Set(base);
-        for(let r=1;r<L && ok;r++){
-          for(let c=0;c<rows[r].length;c++){
-            const v = Math.abs(rows[r-1][c] - rows[r-1][c+1]);
-            if(v<1 || v>15) { ok=false; break; }
-            if(seen.has(v)) { ok=false; break; }
-            rows[r][c]=v; seen.add(v);
-          }
-        }
-        if(ok && seen.size===15){
-          return base;
-        }
-      }
-      return null;
-    }
-
-    function resetEmpty(){
+        function resetEmpty(){
       state.base = Array(L).fill(null);
       state.full = Array.from({length:L}, (_,r)=> Array(L-r).fill(null));
       render();
@@ -324,17 +291,13 @@
 
     // events
     els.btnNew.addEventListener('click', resetEmpty);
-    els.btnGen.addEventListener('click', ()=>{
-      els.msg.textContent = 'Sto cercando una base valida (potrebbe richiedere qualche secondo)...';
-      setTimeout(()=>{
-        const base = findValidBase(30000);
-        if(base){
+            if(base){
           state.base = base;
           compute();
           render();
-          els.msg.textContent = 'Base valida trovata. Prova ad alterarla o riscriverla mantenendo le regole.';
+          els.msg.textContent = 'Base pronta. Prova ad alterarla o riscriverla mantenendo le regole.';
         } else {
-          els.msg.textContent = 'Nessuna base trovata entro i tentativi. Riprova.';
+          els.msg.textContent = 'Controlla i numeri inseriti.';
         }
       }, 30);
     });
