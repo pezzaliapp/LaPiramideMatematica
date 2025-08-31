@@ -3,7 +3,7 @@
 ![Icon-192](icon-192.png) ![Icon-512](icon-512.png)
 
 > **Semplice. Onesta. Implacabile.**  
-> Se un’idea è chiara, non ha bisogno di luci di scena. (Bill Bernbach)
+> Se un’idea è chiara, non ha bisogno di luci di scena. (Alessandro Pezzali)
 
 ---
 
